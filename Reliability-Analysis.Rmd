@@ -1,0 +1,933 @@
+---
+title: "Reliability-Analysis"
+author: "KHLEE"
+date: '2022 2 2 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(irr)
+library(psych)
+library(readxl)
+library(knitr)
+library(DT)
+library(kableExtra)
+library(dplyr)
+library(tidyr)
+```
+
+
+```{r descriptive}
+sheet.num <- c("1번", "2번", "3번", "4번")
+for (i in sheet.num){
+    df <- read_excel("검사재검사.xlsx", 
+                     sheet = i,
+                     col_names=TRUE,
+                     na="NA")
+    df.long <- gather(df, "measurement", "score", -대상자)
+    df.long <- separate(df.long, measurement, into=c("item", "time", "rater"), sep="_")
+    
+    cat(paste0(i, "동작 기술통계 결과"))
+    
+    result <- df.long %>%
+        mutate(item=gsub("문항", "", item),
+               item=as.numeric(item)) %>% 
+        group_by(item) %>% 
+        summarize(평균=round(mean(score, na.rm=TRUE),2),
+                    표준편차=round(sd(score, na.rm=TRUE),2),
+                    중앙치=round(median(score, na.rm=TRUE),2),
+                    사분범위=round(IQR(score, na.rm=TRUE),2),
+                    최대값=round(max(score, na.rm=TRUE),2),
+                    최소값=round(min(score, na.rm=TRUE),2)) %>% 
+        arrange(item)
+    
+    kable(result, caption="문항 점수 기술통계(전체)") %>% 
+        kable_styling() %>% 
+        print()
+    
+    result <- df.long %>%
+        mutate(item=gsub("문항", "", item),
+               item=as.numeric(item)) %>% 
+        group_by(item, rater) %>% 
+        summarize(평균=round(mean(score, na.rm=TRUE),2),
+                    표준편차=round(sd(score, na.rm=TRUE),2),
+                    중앙치=round(median(score, na.rm=TRUE),2),
+                    사분범위=round(IQR(score, na.rm=TRUE),2),
+                    최대값=round(max(score, na.rm=TRUE),2),
+                    최소값=round(min(score, na.rm=TRUE),2)) %>% 
+        arrange(item)
+    
+    kable(result, caption="문항 점수 기술통계(평가자 구분)") %>% 
+        kable_styling() %>% 
+        print()
+    
+    result <- df.long %>%
+        mutate(item=gsub("문항", "", item),
+               item=as.numeric(item)) %>% 
+        group_by(item, time) %>% 
+        summarize(평균=round(mean(score, na.rm=TRUE),2),
+                    표준편차=round(sd(score, na.rm=TRUE),2),
+                    중앙치=round(median(score, na.rm=TRUE),2),
+                    사분범위=round(IQR(score, na.rm=TRUE),2),
+                    최대값=round(max(score, na.rm=TRUE),2),
+                    최소값=round(min(score, na.rm=TRUE),2)) %>% 
+        arrange(item)
+    
+    kable(result, caption="문항 점수 기술통계(평가시점 구분)") %>% 
+        kable_styling() %>% 
+        print()
+    
+    result <- df.long %>%
+        mutate(item=gsub("문항", "", item),
+               item=as.numeric(item)) %>% 
+        group_by(item, rater, time) %>% 
+        summarize(평균=round(mean(score, na.rm=TRUE),2),
+                    표준편차=round(sd(score, na.rm=TRUE),2),
+                    중앙치=round(median(score, na.rm=TRUE),2),
+                    사분범위=round(IQR(score, na.rm=TRUE),2),
+                    최대값=round(max(score, na.rm=TRUE),2),
+                    최소값=round(min(score, na.rm=TRUE),2)) %>% 
+        arrange(item)
+    
+    kable(result, caption="문항 점수 기술통계(평가자, 평가시점 구분)") %>% 
+        kable_styling() %>% 
+        print()
+    
+}
+```
+
+
+```{r reliability1}
+activity.one <- read_excel("검사재검사.xlsx", 
+                           sheet = "1번",
+                           col_names=TRUE,
+                           na="NA")
+
+kable(activity.one[1:10, 1:5], caption="데이터 예시") %>% 
+    kable_styling()
+
+merged.df.1 <- data.frame()
+
+for (i in 1:23){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.one))
+    item.df <- activity.one[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[2]])
+    sd.2 <- sd(item.df[[2]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[2]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[3]])
+    sd.1 <- sd(item.df[[3]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[3]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[3]])
+    sd.2 <- sd(item.df[[3]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[3]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    mean.1 <- mean(item.df[[2]])
+    sd.1 <- sd(item.df[[2]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[2]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.1 <- rbind(merged.df.1, temp.df)
+    merged.df.1$문항 <- gsub("_", "", merged.df.1$문항)
+    merged.df.1$mean.1 <- round(merged.df.1$mean.1, 2)
+    merged.df.1$sd.1 <- round(merged.df.1$sd.1, 2)
+    merged.df.1$mean.2 <- round(merged.df.1$mean.2, 2)
+    merged.df.1$sd.2 <- round(merged.df.1$sd.2, 2)
+    merged.df.1$t <- round(merged.df.1$t, 3)
+    merged.df.1$p <- round(merged.df.1$p, 3)
+}
+
+activity.two <- read_excel("검사재검사.xlsx", 
+                           sheet = "2번",
+                           col_names=TRUE,
+                           na="NA")
+merged.df.2 <- data.frame()
+
+for (i in 1:13){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.two))
+    item.df <- activity.two[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[2]])
+    sd.2 <- sd(item.df[[2]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[2]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[3]])
+    sd.1 <- sd(item.df[[3]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[3]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[3]])
+    sd.2 <- sd(item.df[[3]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[3]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    mean.1 <- mean(item.df[[2]])
+    sd.1 <- sd(item.df[[2]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[2]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.2 <- rbind(merged.df.2, temp.df)
+    merged.df.2$문항 <- gsub("_", "", merged.df.2$문항)
+    merged.df.2$mean.1 <- round(merged.df.2$mean.1, 2)
+    merged.df.2$sd.1 <- round(merged.df.2$sd.1, 2)
+    merged.df.2$mean.2 <- round(merged.df.2$mean.2, 2)
+    merged.df.2$sd.2 <- round(merged.df.2$sd.2, 2)
+    merged.df.2$t <- round(merged.df.2$t, 3)
+    merged.df.2$p <- round(merged.df.2$p, 3)
+}
+
+activity.three <- read_excel("검사재검사.xlsx", 
+                           sheet = "3번",
+                           col_names=TRUE,
+                           na="NA")
+merged.df.3 <- data.frame()
+
+for (i in 1:7){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.three))
+    item.df <- activity.three[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[2]])
+    sd.2 <- sd(item.df[[2]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[2]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[3]])
+    sd.1 <- sd(item.df[[3]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[3]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[3]])
+    sd.2 <- sd(item.df[[3]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[3]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    mean.1 <- mean(item.df[[2]])
+    sd.1 <- sd(item.df[[2]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[2]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.3 <- rbind(merged.df.3, temp.df)
+    merged.df.3$문항 <- gsub("_", "", merged.df.3$문항)
+    merged.df.3$mean.1 <- round(merged.df.3$mean.1, 2)
+    merged.df.3$sd.1 <- round(merged.df.3$sd.1, 2)
+    merged.df.3$mean.2 <- round(merged.df.3$mean.2, 2)
+    merged.df.3$sd.2 <- round(merged.df.3$sd.2, 2)
+    merged.df.3$t <- round(merged.df.3$t, 3)
+    merged.df.3$p <- round(merged.df.3$p, 3)
+}
+
+activity.four <- read_excel("검사재검사.xlsx", 
+                             sheet = "4번",
+                             col_names=TRUE,
+                             na="NA")
+merged.df.4 <- data.frame()
+
+for (i in 1:10){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.four))
+    item.df <- activity.four[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[2]])
+    sd.2 <- sd(item.df[[2]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[2]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[3]])
+    sd.1 <- sd(item.df[[3]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[3]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 비교",
+                              mean.1,
+                              sd.1,
+                              mean.2,
+                              sd.2,
+                              t=t.value,
+                              df=t.df,
+                              p=p.value)
+    
+    mean.1 <- mean(item.df[[1]])
+    sd.1 <- sd(item.df[[1]])
+    mean.2 <- mean(item.df[[3]])
+    sd.2 <- sd(item.df[[3]])
+    
+    t.result <- t.test(item.df[[1]], item.df[[3]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    mean.1 <- mean(item.df[[2]])
+    sd.1 <- sd(item.df[[2]])
+    mean.2 <- mean(item.df[[4]])
+    sd.2 <- sd(item.df[[4]])
+    
+    t.result <- t.test(item.df[[2]], item.df[[4]], paired=TRUE)
+    t.value <- t.result$statistic
+    t.df <- t.result$parameter
+    p.value <- t.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 점수 비교",
+                             mean.1,
+                             sd.1,
+                             mean.2,
+                             sd.2,
+                             t=t.value,
+                             df=t.df,
+                             p=p.value)
+    
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.4 <- rbind(merged.df.4, temp.df)
+    merged.df.4$문항 <- gsub("_", "", merged.df.4$문항)
+    merged.df.4$mean.1 <- round(merged.df.4$mean.1, 2)
+    merged.df.4$sd.1 <- round(merged.df.4$sd.1, 2)
+    merged.df.4$mean.2 <- round(merged.df.4$mean.2, 2)
+    merged.df.4$sd.2 <- round(merged.df.4$sd.2, 2)
+    merged.df.4$t <- round(merged.df.4$t, 3)
+    merged.df.4$p <- round(merged.df.4$p, 3)
+}
+
+merged.df.1$동작 <- "1번 동작"
+merged.df.2$동작 <- "2번 동작"
+merged.df.3$동작 <- "3번 동작"
+merged.df.4$동작 <- "4번 동작"
+
+t.merged.df <- rbind(merged.df.1, merged.df.2, merged.df.3, merged.df.4) 
+t.merged.df <- t.merged.df[c(ncol(t.merged.df), 2:ncol(t.merged.df)-1)]
+t.merged.df$비고 <- ifelse(t.merged.df$p < 0.001, "***",
+                         ifelse(t.merged.df$p < 0.01, "**",
+                                ifelse(t.merged.df$p < 0.05, "*", "")))
+
+row.names(t.merged.df) <- NULL
+kable(t.merged.df, caption="Paired t-test 분석 결과", align="c")
+
+```
+
+```{r reliability2}
+activity.one <- read_excel("검사재검사.xlsx", 
+                           sheet = "1번",
+                           col_names=TRUE,
+                           na="NA")
+merged.df.1 <- data.frame()
+for (i in 1:23){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.one))
+    item.df <- activity.one[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[2]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[3]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[3]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    cor.result <- cor.test(item.df[[2]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.1 <- rbind(merged.df.1, temp.df)
+    merged.df.1$문항 <- gsub("_", "", merged.df.1$문항)
+    merged.df.1$r <- round(merged.df.1$r, 3)
+    merged.df.1$p <- round(merged.df.1$p, 3)
+}
+
+activity.two <- read_excel("검사재검사.xlsx", 
+                           sheet = "2번",
+                           col_names=TRUE,
+                           na="NA")
+merged.df.2 <- data.frame()
+
+for (i in 1:13){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.two))
+    item.df <- activity.two[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[2]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[3]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[3]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    cor.result <- cor.test(item.df[[2]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.2 <- rbind(merged.df.2, temp.df)
+    merged.df.2$문항 <- gsub("_", "", merged.df.2$문항)
+    merged.df.2$r <- round(merged.df.2$r, 3)
+    merged.df.2$p <- round(merged.df.2$p, 3)
+}
+
+activity.three <- read_excel("검사재검사.xlsx", 
+                           sheet = "3번",
+                           col_names=TRUE,
+                           na="NA")
+merged.df.3 <- data.frame()
+
+for (i in 1:7){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.three))
+    item.df <- activity.three[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[2]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[3]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[3]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    cor.result <- cor.test(item.df[[2]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.3 <- rbind(merged.df.3, temp.df)
+    merged.df.3$문항 <- gsub("_", "", merged.df.3$문항)
+    merged.df.3$r <- round(merged.df.3$r, 3)
+    merged.df.3$p <- round(merged.df.3$p, 3)
+}
+
+activity.four <- read_excel("검사재검사.xlsx", 
+                             sheet = "4번",
+                             col_names=TRUE,
+                             na="NA")
+merged.df.4 <- data.frame()
+
+for (i in 1:10){
+    pattern <- paste0("문항", i, "_")
+    
+    vars <- grep(pattern, colnames(activity.four))
+    item.df <- activity.four[,vars]
+    colnames(item.df) <- gsub("pattern", "", colnames(item.df)) 
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[2]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater1.df <- data.frame(문항=pattern,
+                              설명="1번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[3]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    rater2.df <- data.frame(문항=pattern,
+                              설명="2번 평가자의 1차 2차 점수 상관계수",
+                              r=r.value,
+                              p=p.value)
+    
+    cor.result <- cor.test(item.df[[1]], item.df[[3]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time1.df <- data.frame(문항=pattern,
+                             설명="1차 평가의 1번 2번 평가자 점수 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    cor.result <- cor.test(item.df[[2]], item.df[[4]]) 
+    r.value <- cor.result$estimate
+    p.value <- cor.result$p.value
+    
+    time2.df <- data.frame(문항=pattern,
+                             설명="2차 평가의 1번 2번 평가자 점수 상관계수",
+                             r=r.value,
+                             p=p.value)
+    
+    temp.df <- rbind(rater1.df, rater2.df, time1.df, time2.df)
+    merged.df.4 <- rbind(merged.df.4, temp.df)
+    merged.df.4$문항 <- gsub("_", "", merged.df.4$문항)
+    merged.df.4$r <- round(merged.df.4$r, 3)
+    merged.df.4$p <- round(merged.df.4$p, 3)
+}
+
+merged.df.1$동작 <- "1번 동작"
+merged.df.2$동작 <- "2번 동작"
+merged.df.3$동작 <- "3번 동작"
+merged.df.4$동작 <- "4번 동작"
+
+r.merged.df <- rbind(merged.df.1, merged.df.2, merged.df.3, merged.df.4)
+r.merged.df <- r.merged.df[c(ncol(r.merged.df), 2:ncol(r.merged.df)-1)]
+r.merged.df <- r.merged.df[,-ncol(r.merged.df)]
+
+kable(r.merged.df, caption="상관계수 분석 결과", align="c")
+final.merged.df <- cbind(t.merged.df, r.merged.df)
+row.names(final.merged.df) <- NULL
+
+final.merged.df$신뢰도 <-  rep(c("검사-재검사 신뢰도", "검사-재검사 신뢰도",
+                 "검사자간 신뢰도", "검사자간 신뢰도"), nrow(final.merged.df)/4)
+final.merged.df<- final.merged.df[c(ncol(final.merged.df), 2:ncol(final.merged.df)-1)]
+final.merged.df <- final.merged.df[,c(-13,-14,-15)]
+
+rater1.test.retest.df <- final.merged.df %>%
+    filter(신뢰도=="검사-재검사 신뢰도",
+            grepl("1번 평가자", 설명)) %>% 
+    rename(time1.mean=mean.1,
+           time1.sd=sd.1,
+           time2.mean=mean.2,
+           time2.sd=sd.2) %>% 
+    select(-신뢰도, -설명)
+
+datatable(rater1.test.retest.df, caption="검사-재검사 신뢰도 (1번 평가자)",
+          rownames = FALSE,
+          extensions="Buttons",
+          options=list(dom="Bfrtip",
+                       buttons=c("excel")))
+
+rater2.test.retest.df <- final.merged.df %>%
+    filter(신뢰도=="검사-재검사 신뢰도",
+            grepl("2번 평가자", 설명)) %>% 
+    rename(time1.mean=mean.1,
+           time1.sd=sd.1,
+           time2.mean=mean.2,
+           time2.sd=sd.2) %>% 
+    select(-신뢰도, -설명)
+
+datatable(rater2.test.retest.df, caption="검사-재검사 신뢰도 (2번 평가자)",
+          rownames = FALSE,
+          extensions="Buttons",
+          options=list(dom="Bfrtip",
+                       buttons=c("excel")))
+
+time1.inter.rater.df <- final.merged.df %>%
+    filter(신뢰도=="검사자간 신뢰도",
+            grepl("1차 평가", 설명)) %>% 
+    rename(rater1.mean=mean.1,
+           rater1.sd=sd.1,
+           rater2.mean=mean.2,
+           rater2.sd=sd.2) %>% 
+    select(-신뢰도, -설명)
+
+datatable(time1.inter.rater.df, caption="1차 평가에서 검사자간 신뢰도",
+          rownames = FALSE,
+          extensions="Buttons",
+          options=list(dom="Bfrtip",
+                       buttons=c("excel")))
+
+time2.inter.rater.df <- final.merged.df %>%
+    filter(신뢰도=="검사자간 신뢰도",
+            grepl("2차 평가", 설명)) %>% 
+    rename(rater1.mean=mean.1,
+           rater1.sd=sd.1,
+           rater2.mean=mean.2,
+           rater2.sd=sd.2) %>% 
+    select(-신뢰도, -설명)
+
+datatable(time1.inter.rater.df, caption="2차 평가에서 검사자간 신뢰도",
+          rownames = FALSE,
+          extensions="Buttons",
+          options=list(dom="Bfrtip",
+                       buttons=c("excel")))
+```
+
+```{r reliability3}
+activity.one <- read_excel("검사재검사.xlsx", 
+                           sheet = "1번",
+                           col_names=TRUE,
+                           na="NA")
+
+activity.one <- activity.one[,-1]
+icc.result <- ICC(activity.one)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.1 <- "평가자1"
+activity.one.rater1 <- activity.one[grep(pattern.1, colnames(activity.one))]
+icc.result <- ICC(activity.one.rater1)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.2 <- "평가자2"
+activity.one.rater2 <- activity.one[grep(pattern.2, colnames(activity.one))]
+icc.result <- ICC(activity.one.rater2)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+activity.two <- read_excel("검사재검사.xlsx", 
+                           sheet = "2번",
+                           col_names=TRUE,
+                           na="NA")
+
+activity.two <- activity.two[,-1]
+icc.result <- ICC(activity.two)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.1 <- "평가자1"
+activity.two.rater1 <- activity.two[grep(pattern.1, colnames(activity.two))]
+icc.result <- ICC(activity.two.rater1)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.2 <- "평가자2"
+activity.two.rater2 <- activity.two[grep(pattern.2, colnames(activity.two))]
+icc.result <- ICC(activity.two.rater2)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+activity.three <- read_excel("검사재검사.xlsx", 
+                           sheet = "3번",
+                           col_names=TRUE,
+                           na="NA")
+
+activity.three <- activity.three[,-1]
+icc.result <- ICC(activity.three)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.1 <- "평가자1"
+activity.three.rater1 <- activity.three[grep(pattern.1, colnames(activity.three))]
+icc.result <- ICC(activity.three.rater1)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.2 <- "평가자2"
+activity.three.rater2 <- activity.three[grep(pattern.2, colnames(activity.three))]
+icc.result <- ICC(activity.three.rater2)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+activity.four <- read_excel("검사재검사.xlsx", 
+                             sheet = "4번",
+                             col_names=TRUE,
+                             na="NA")
+
+activity.four <- activity.four[,-1]
+icc.result <- ICC(activity.four)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.1 <- "평가자1"
+activity.four.rater1 <- activity.four[grep(pattern.1, colnames(activity.four))]
+icc.result <- ICC(activity.four.rater1)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+
+pattern.2 <- "평가자2"
+activity.four.rater2 <- activity.four[grep(pattern.2, colnames(activity.four))]
+icc.result <- ICC(activity.four.rater2)
+kable(icc.result$results, digits = 3) %>% 
+    kable_styling()
+```
